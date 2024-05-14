@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState } from "react";
+import React, { memo, useEffect, useLayoutEffect, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -12,13 +12,29 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import Animated, {
+  Extrapolation,
   LinearTransition,
   ZoomIn,
   ZoomOut,
+  interpolate,
+  runOnJS,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
+  withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import {
+  useNavigation,
+  useNavigationContainerRef,
+  useRootNavigation,
+} from "expo-router";
+import { useRoute } from "@react-navigation/native";
+import { useHeaderHeight } from "@react-navigation/elements";
 
 interface IMAGE_TYPE {
   author: string;
@@ -38,6 +54,46 @@ interface STATE_TYPE {
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const Home = () => {
+  const headerSize = useHeaderHeight();
+  console.log("headerSize", headerSize);
+  const navigation = useNavigation();
+  const translationY = useSharedValue(-130);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: "Wallpaper",
+    });
+  }, [navigation]);
+
+  const toggleHeader = (isZero: boolean) => {
+    if (isZero) {
+      navigation.setOptions({
+        headerTintColor: undefined,
+      });
+    } else {
+      navigation.setOptions({
+        headerTintColor: "white",
+      });
+    }
+  };
+
+  useDerivedValue(() => {
+    let translateValue = interpolate(
+      translationY.value,
+      [-125, -130],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    if (translateValue === 0) {
+      runOnJS(toggleHeader)(true);
+    } else {
+      runOnJS(toggleHeader)(false);
+    }
+  }, []);
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    translationY.value = event.contentOffset.y;
+  });
   const { bottom } = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -50,7 +106,7 @@ const Home = () => {
 
   const COLUMN_SIZE = width / 3;
   const MIDDLE_MARGIN = 5;
-  const EDGE_MARGIN = 5;
+  const EDGE_MARGIN = 0;
   const IMAGE_SPACING = (2 * MIDDLE_MARGIN + 2 * EDGE_MARGIN) / 3;
   const IMAGE_WIDTH = COLUMN_SIZE - IMAGE_SPACING;
   const COLUMNS = 3;
@@ -65,7 +121,7 @@ const Home = () => {
 
   const getImages = () => {
     setState((prev) => ({ ...prev, refreshing: true }));
-    fetch("https://picsum.photos/v2/list?page=5&limit=50")
+    fetch("https://picsum.photos/v2/list?page=10&limit=100")
       .then((res) => res.json())
       .then((res) =>
         setState((prev) => ({ ...prev, imageData: res, refreshing: false }))
@@ -91,7 +147,7 @@ const Home = () => {
     const findIndex = state.activeIndex.indexOf(index);
 
     return (
-      <Pressable onPressIn={() => selectImage(index)}>
+      <Pressable onPress={() => selectImage(index)}>
         <View
           style={{
             backgroundColor: "whitesmoke",
@@ -107,7 +163,7 @@ const Home = () => {
               style={{
                 right: 5,
                 top: 5,
-                backgroundColor: "red",
+                backgroundColor: "dodgerblue",
                 position: "absolute",
                 zIndex: 1,
                 minWidth: 25,
@@ -141,23 +197,68 @@ const Home = () => {
     );
   };
 
+  const animatedStyle = useAnimatedStyle(() => {
+    let translateValue = interpolate(
+      translationY.value,
+      [-125, -130],
+      [0.8, 0],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity: withTiming(translateValue),
+    };
+  });
+
+  const ListHeaderComponent = () => {
+    let translateValue = interpolate(
+      translationY.value,
+      [-125, -130],
+      [0.5, 0],
+      Extrapolation.CLAMP
+    );
+    return (
+      <Animated.View
+        layout={LinearTransition.springify()}
+        style={[
+          {
+            width: "100%",
+            height: headerSize,
+            position: "absolute",
+            zIndex: 1,
+          },
+          animatedStyle,
+        ]}
+      >
+        <LinearGradient
+          colors={["rgba(0,0,0,0.8)", "transparent"]}
+          style={{ flex: 1, height: headerSize }}
+        />
+      </Animated.View>
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["right", "left"]}>
-      <FlatList
-        numColumns={COLUMNS}
-        data={state.imageData}
-        renderItem={renderItem}
-        columnWrapperStyle={{ gap: MIDDLE_MARGIN }}
-        contentContainerStyle={{
-          padding: EDGE_MARGIN,
-          paddingBottom: bottom,
-          gap: MIDDLE_MARGIN,
-        }}
-        keyExtractor={(val) => val.id}
-        refreshControl={
-          <RefreshControl refreshing={state.refreshing} onRefresh={onRefresh} />
-        }
-      />
+      <ListHeaderComponent />
+      {state.imageData?.length > 0 && (
+        <Animated.FlatList
+          numColumns={COLUMNS}
+          onScroll={scrollHandler}
+          contentInsetAdjustmentBehavior="automatic"
+          data={state.imageData}
+          renderItem={renderItem}
+          columnWrapperStyle={{ gap: MIDDLE_MARGIN }}
+          contentContainerStyle={{
+            padding: EDGE_MARGIN,
+            paddingBottom: bottom,
+            gap: MIDDLE_MARGIN,
+          }}
+          keyExtractor={(val) => val.id}
+          // refreshControl={
+          //   <RefreshControl refreshing={state.refreshing} onRefresh={onRefresh} />
+          // }
+        />
+      )}
     </SafeAreaView>
   );
 };
