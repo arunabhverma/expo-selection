@@ -1,8 +1,6 @@
 import React, { memo, useEffect, useLayoutEffect, useState } from "react";
 import {
-  FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -25,15 +23,10 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
-import {
-  useNavigation,
-  useNavigationContainerRef,
-  useRootNavigation,
-} from "expo-router";
-import { useRoute } from "@react-navigation/native";
+import { useNavigation } from "expo-router";
+import { useTheme } from "@react-navigation/native";
 import { useHeaderHeight } from "@react-navigation/elements";
 
 interface IMAGE_TYPE {
@@ -54,8 +47,8 @@ interface STATE_TYPE {
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const Home = () => {
+  const theme = useTheme();
   const headerSize = useHeaderHeight();
-  console.log("headerSize", headerSize);
   const navigation = useNavigation();
   const translationY = useSharedValue(-130);
 
@@ -149,33 +142,20 @@ const Home = () => {
     return (
       <Pressable onPress={() => selectImage(index)}>
         <View
-          style={{
-            backgroundColor: "whitesmoke",
-            width: IMAGE_WIDTH,
-            aspectRatio: 1,
-            position: "relative",
-          }}
+          style={[
+            styles.itemContainer,
+            { backgroundColor: theme.colors.border, width: IMAGE_WIDTH },
+          ]}
         >
           {isActive && (
             <Animated.View
               entering={ZoomIn.duration(150)}
               exiting={ZoomOut.duration(50)}
-              style={{
-                right: 5,
-                top: 5,
-                backgroundColor: "dodgerblue",
-                position: "absolute",
-                zIndex: 1,
-                minWidth: 25,
-                height: 25,
-                borderRadius: 50,
-                borderWidth: 2,
-                borderColor: "whitesmoke",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+              style={[styles.closeIcon, { borderColor: theme.colors.border }]}
             >
-              <Text style={{ color: "white", fontSize: 13, fontWeight: "500" }}>
+              <Text
+                style={[styles.numberStyle, { color: theme.colors.border }]}
+              >
                 {findIndex + 1}
               </Text>
             </Animated.View>
@@ -201,7 +181,7 @@ const Home = () => {
     let translateValue = interpolate(
       translationY.value,
       [-125, -130],
-      [0.8, 0],
+      [1, 0],
       Extrapolation.CLAMP
     );
     return {
@@ -210,12 +190,6 @@ const Home = () => {
   });
 
   const ListHeaderComponent = () => {
-    let translateValue = interpolate(
-      translationY.value,
-      [-125, -130],
-      [0.5, 0],
-      Extrapolation.CLAMP
-    );
     return (
       <Animated.View
         layout={LinearTransition.springify()}
@@ -238,7 +212,7 @@ const Home = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["right", "left"]}>
+    <SafeAreaView style={styles.flexOne} edges={["right", "left"]}>
       <ListHeaderComponent />
       {state.imageData?.length > 0 && (
         <Animated.FlatList
@@ -266,5 +240,29 @@ const Home = () => {
 export default memo(Home);
 
 const styles = StyleSheet.create({
+  flexOne: {
+    flex: 1,
+  },
   containerStyle: {},
+  closeIcon: {
+    right: 5,
+    top: 5,
+    backgroundColor: "dodgerblue",
+    position: "absolute",
+    zIndex: 1,
+    minWidth: 25,
+    height: 25,
+    borderRadius: 50,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  numberStyle: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  itemContainer: {
+    aspectRatio: 1,
+    position: "relative",
+  },
 });
