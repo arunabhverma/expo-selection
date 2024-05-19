@@ -20,7 +20,7 @@ const ListFooterComponent = ({ imageLength }: { imageLength: number }) => {
           fontWeight: "600",
         }}
       >
-        {imageLength} Photos
+        {imageLength} Wallpapers
       </Text>
     </View>
   );

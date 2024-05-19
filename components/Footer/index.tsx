@@ -62,7 +62,7 @@ const FooterComponent = ({
         <View style={styles.middle}>
           <Text style={[styles.countText, { color: theme.colors.text }]}>
             {activeImageIndex?.length > 0
-              ? `${activeImageIndex.length} Photo Selected`
+              ? `${activeImageIndex.length} Wallpaper Selected`
               : "Select Items"}
           </Text>
         </View>
