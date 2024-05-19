@@ -1,62 +1,35 @@
-import React, { memo, useEffect, useLayoutEffect, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
+import { RefreshControl, StyleSheet } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Image } from "expo-image";
 import Animated, {
   Extrapolation,
-  LinearTransition,
-  ZoomIn,
-  ZoomOut,
   interpolate,
   runOnJS,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
 } from "react-native-reanimated";
 import { useNavigation } from "expo-router";
-import { useTheme } from "@react-navigation/native";
-import { useHeaderHeight } from "@react-navigation/elements";
-
-interface IMAGE_TYPE {
-  author: string;
-  download_url: string;
-  height: number;
-  id: string;
-  url: string;
-  width: number;
-}
-
-interface STATE_TYPE {
-  imageData: IMAGE_TYPE[];
-  refreshing: boolean;
-  activeIndex: number[];
-  isStarted: boolean;
-}
-const AnimatedImage = Animated.createAnimatedComponent(Image);
+import { COLUMNS, MIDDLE_MARGIN, EDGE_MARGIN } from "@/constants";
+import ListHeaderComponent from "@/components/ListHeader";
+import ListFooterComponent from "@/components/ListFooter";
+import FooterComponent from "@/components/Footer";
+import Header from "@/components/Header";
+import List from "@/components/List";
+import { IMAGE_TYPE, STATE_TYPE } from "@/types";
 
 const Home = () => {
-  const theme = useTheme();
-  const headerSize = useHeaderHeight();
   const navigation = useNavigation();
   const translationY = useSharedValue(-130);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: "Wallpaper",
-    });
-  }, [navigation]);
 
   const toggleHeader = (isZero: boolean) => {
     if (isZero) {
@@ -87,22 +60,34 @@ const Home = () => {
   const scrollHandler = useAnimatedScrollHandler((event) => {
     translationY.value = event.contentOffset.y;
   });
+
   const { bottom } = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
 
   const [state, setState] = useState<STATE_TYPE>({
     imageData: [],
     refreshing: false,
     activeIndex: [],
-    isStarted: false,
+    canSelect: false,
   });
 
-  const COLUMN_SIZE = width / 3;
-  const MIDDLE_MARGIN = 5;
-  const EDGE_MARGIN = 0;
-  const IMAGE_SPACING = (2 * MIDDLE_MARGIN + 2 * EDGE_MARGIN) / 3;
-  const IMAGE_WIDTH = COLUMN_SIZE - IMAGE_SPACING;
-  const COLUMNS = 3;
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: "Wallpaper",
+      headerRight: (props: { canGoBAck: boolean; tintColor: string }) => (
+        <Header
+          {...props}
+          canSelect={state.canSelect}
+          toggleCanSelect={() =>
+            setState((prev) => ({
+              ...prev,
+              canSelect: !prev.canSelect,
+              activeIndex: [],
+            }))
+          }
+        />
+      ),
+    });
+  }, [navigation, state.canSelect]);
 
   useEffect(() => {
     getImages();
@@ -122,115 +107,72 @@ const Home = () => {
   };
 
   const selectImage = (id: number) => {
-    if (state.activeIndex.includes(id)) {
-      setState((prev) => ({
-        ...prev,
-        activeIndex: prev.activeIndex.filter((i) => i !== id),
-      }));
-    } else {
-      setState((prev) => ({
-        ...prev,
-        activeIndex: [...prev.activeIndex, id],
-      }));
+    if (state.canSelect) {
+      if (state.activeIndex.includes(id)) {
+        setState((prev) => ({
+          ...prev,
+          activeIndex: prev.activeIndex.filter((i) => i !== id),
+        }));
+      } else {
+        setState((prev) => ({
+          ...prev,
+          activeIndex: [...prev.activeIndex, id],
+        }));
+      }
     }
   };
 
-  const renderItem = ({ item, index }: { item: IMAGE_TYPE; index: number }) => {
-    const isActive = state.activeIndex.includes(index);
-    const findIndex = state.activeIndex.indexOf(index);
-
-    return (
-      <Pressable onPress={() => selectImage(index)}>
-        <View
-          style={[
-            styles.itemContainer,
-            { backgroundColor: theme.colors.border, width: IMAGE_WIDTH },
-          ]}
-        >
-          {isActive && (
-            <Animated.View
-              entering={ZoomIn.duration(150)}
-              exiting={ZoomOut.duration(50)}
-              style={[styles.closeIcon, { borderColor: theme.colors.border }]}
-            >
-              <Text
-                style={[styles.numberStyle, { color: theme.colors.border }]}
-              >
-                {findIndex + 1}
-              </Text>
-            </Animated.View>
-          )}
-          <AnimatedImage
-            layout={LinearTransition.duration(150)}
-            source={{ uri: item.download_url }}
-            contentFit={"cover"}
-            style={{
-              width: IMAGE_WIDTH,
-              aspectRatio: 1,
-              flex: 1,
-              margin: isActive ? 15 : 0,
-              borderRadius: isActive ? 10 : 0,
-            }}
-          />
-        </View>
-      </Pressable>
-    );
-  };
-
-  const animatedStyle = useAnimatedStyle(() => {
-    let translateValue = interpolate(
-      translationY.value,
-      [-125, -130],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    return {
-      opacity: withTiming(translateValue),
-    };
-  });
-
-  const ListHeaderComponent = () => {
-    return (
-      <Animated.View
-        layout={LinearTransition.springify()}
-        style={[
-          {
-            width: "100%",
-            height: headerSize,
-            position: "absolute",
-            zIndex: 1,
-          },
-          animatedStyle,
-        ]}
-      >
-        <LinearGradient
-          colors={["rgba(0,0,0,0.8)", "transparent"]}
-          style={{ flex: 1, height: headerSize }}
+  const renderItem = useCallback(
+    (props: { item: IMAGE_TYPE; index: number }) => {
+      return (
+        <List
+          {...props}
+          activeImageIndex={state.activeIndex}
+          selectImage={selectImage}
         />
-      </Animated.View>
-    );
-  };
+      );
+    },
+    [state.activeIndex, state.canSelect]
+  );
+
+  const listFooter = useCallback(() => {
+    return <ListFooterComponent imageLength={state.imageData.length} />;
+  }, [state.imageData]);
 
   return (
     <SafeAreaView style={styles.flexOne} edges={["right", "left"]}>
-      <ListHeaderComponent />
+      <ListHeaderComponent translationY={translationY} />
       {state.imageData?.length > 0 && (
         <Animated.FlatList
           numColumns={COLUMNS}
           onScroll={scrollHandler}
           contentInsetAdjustmentBehavior="automatic"
+          ListFooterComponent={listFooter}
           data={state.imageData}
           renderItem={renderItem}
-          columnWrapperStyle={{ gap: MIDDLE_MARGIN }}
-          contentContainerStyle={{
-            padding: EDGE_MARGIN,
-            paddingBottom: bottom,
-            gap: MIDDLE_MARGIN,
-          }}
+          columnWrapperStyle={styles.gap}
+          contentContainerStyle={[
+            styles.listContainerStyle,
+            { paddingBottom: bottom },
+          ]}
           keyExtractor={(val) => val.id}
-          // refreshControl={
-          //   <RefreshControl refreshing={state.refreshing} onRefresh={onRefresh} />
-          // }
+          refreshControl={
+            <RefreshControl
+              refreshing={state.refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+        />
+      )}
+      {state.canSelect && (
+        <FooterComponent
+          activeImageIndex={state.activeIndex}
+          toggleImage={(id) =>
+            setState((prev) => ({
+              ...prev,
+              activeIndex: prev.activeIndex.filter((item) => item.id !== id),
+            }))
+          }
         />
       )}
     </SafeAreaView>
@@ -243,26 +185,11 @@ const styles = StyleSheet.create({
   flexOne: {
     flex: 1,
   },
-  containerStyle: {},
-  closeIcon: {
-    right: 5,
-    top: 5,
-    backgroundColor: "dodgerblue",
-    position: "absolute",
-    zIndex: 1,
-    minWidth: 25,
-    height: 25,
-    borderRadius: 50,
-    borderWidth: 2,
-    justifyContent: "center",
-    alignItems: "center",
+  listContainerStyle: {
+    padding: EDGE_MARGIN,
+    gap: MIDDLE_MARGIN,
   },
-  numberStyle: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  itemContainer: {
-    aspectRatio: 1,
-    position: "relative",
+  gap: {
+    gap: MIDDLE_MARGIN,
   },
 });
