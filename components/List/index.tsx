@@ -1,5 +1,5 @@
 import { IMAGE_WIDTH } from "@/constants";
-import { IMAGE_TYPE, LIST_PROPS } from "@/types";
+import { LIST_PROPS } from "@/types";
 import { useTheme } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, Text, View } from "react-native";
