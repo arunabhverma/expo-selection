@@ -10,7 +10,7 @@ export interface IMAGE_TYPE {
 export interface STATE_TYPE {
   imageData: IMAGE_TYPE[];
   refreshing: boolean;
-  activeIndex: number[];
+  activeIndex: IMAGE_TYPE[];
   canSelect: boolean;
 }
 

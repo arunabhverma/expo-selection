@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import { RefreshControl, StyleSheet } from "react-native";
@@ -106,7 +107,7 @@ const Home = () => {
       );
   };
 
-  const selectImage = (id: number) => {
+  const selectImage = (id: IMAGE_TYPE) => {
     if (state.canSelect) {
       if (state.activeIndex.includes(id)) {
         setState((prev) => ({
@@ -164,7 +165,7 @@ const Home = () => {
           }
         />
       )}
-      {state.canSelect && (
+      {state.activeIndex.length > 0 && (
         <FooterComponent
           activeImageIndex={state.activeIndex}
           toggleImage={(id) =>
